@@ -1,0 +1,234 @@
+
+%=========================
+% Author: André Schrottenloher & Marc Stevens
+% Date: March 2023
+% Version: 1
+%=========================
+%================================
+% A set of macros to create figures of MITM attacks on block ciphers
+%
+% Example:
+%
+%\begin{figpresent}[]{16}
+%\keyaddbelow[bwd]{0}{$k_0$}
+%\addkeybelow[fwd]{2}{$k_1$}
+%\figcell[bwd]{0}{10}{$x_0^0$}
+%\figedge[fwd]{0}{9}
+%\newround
+%\figcell[bwd]{0}{10}{$x_0^0$}\figcell[bwd]{10}{5}{$x_0^0$}
+%\figedge[match]{0}{9}
+%\end{figpresent}
+%
+% - The environment "figpresent" is a wrapper around a tikzpicture
+% environment
+% - The block cipher is present-based : nibbles are numbered from 0 to n-1
+% - \figcell{i}{j} creates a cell at position i of width j (operating on j nibbles)
+% - \figedge{i}{j} creates an edge between the nibble i at the current round and
+% the nibble j at the next round
+% - \addkeybelow adds a key bit below the cell at the current round.
+% - \addkeyabove does this above
+% - \keyaddbelow also adds the key bit, but only represents it as a colored square
+%
+% The relative sizes of figure elements (height of a round, of the
+% permutation layers, etc.) are controlled by several variables. Different
+% settings are defined in the python code that generates the figures, depending
+% on the number of nibbles and rounds.
+
+% Load required packages
+\usepackage{tikz}
+\usepackage{calc}
+\usepackage{ifthen}
+\usetikzlibrary{arrows}
+\usetikzlibrary{patterns}
+\usepackage[T1]{fontenc}
+\usepackage{courier}
+\usepackage{intcalc}
+\usepackage{xcolor}
+\usepackage{xstring}
+\usepackage{pgf}
+
+% Definition of colors for the path
+\colorlet{darkgreen}{green!50!black} \colorlet{darkblue}{blue!50!black}
+\colorlet{darkred}{red!50!black} \colorlet{darkorange}{orange!70!black}
+
+% counter for the Y position
+\newcounter{presY}
+
+
+\newenvironment{figpresent}[1][]
+{
+	\def\bitwidth{8} % width of a bit (nibble)
+	\def\bitsep{1} 	% separation between bits 
+	% (creates a separation between the cells when we display them)
+	\def\rdheight{20} % height of a round
+	\setcounter{presY}{0} % start at 0 for position Y
+	% regulate the proportions of cells / linear layers
+	% input edge starts at presY
+	% proportions
+	\def\cellstart{0.2} % in proportion of the round height, 
+	%position at which the cell is positioned
+	\def\outedgestart{0.5} % in proportion of the round height, 
+	%position at which the cell ends (edges start)
+	\def\swapstart{0.7} % in proportion of the round height, 
+	%position at which the "swap" of edges occurs 
+	\def\edgeshift{0} % shifts the edges globally (used only
+	% in specific cases)
+	\def\nextcellsep{0} % creates some separation with the next cell
+	% (used only in specific cases)
+	
+	% enter tikz picture
+	\begin{tikzpicture}[#1, scale=0.1]
+}
+{	
+	% leave tikz picture
+	\end{tikzpicture}
+}
+
+% do renewcommands with triangle left / right if you want horizontal figures
+\newcommand{\fwdsymbol}{ {\Large $\blacktriangledown$} }
+% symbol for forward elements
+\newcommand{\bwdsymbol}{ {\Large $\blacktriangle$} }
+% symbol for backward elements
+\newcommand{\mgdsymbol}{ {\Large $\blacklozenge$} }
+% symbol for middle elements (e.g., cells with matching through MC)
+
+% a label for the current round number, displayed on the left
+\newcommand{\roundlabel}[1]{ \draw node[anchor=east]  at (-\bitsep, -\thepresY + 0.5*\rdheight*\cellstart - 0.5*\rdheight*\swapstart) {#1}; }
+
+% starts a new round: counter for presY is increased
+\newcommand{\newround}{\addtocounter{presY}{\rdheight}}
+
+% Creates a cell. Usage:
+% \figcell[fwd]{0}{2}{$x_0$}
+% Creates a cell of "fwd" type (either "fwd", "bwd", "mgd" or none)
+% starting at nibble 0, spanning 2 nibbles, and with display name $x_0$
+\newcommand{\figcell}[4][]{
+	% determine cell color and symbol
+	\IfStrEq{#1}{bwd}{ \def \cellcolor{darkred} \def \tmp{\bwdsymbol} }{
+		\IfStrEq{#1}{fwd}{ \def \cellcolor{darkblue} \def \tmp{\fwdsymbol} }{
+			\IfStrEq{#1}{mgd}{ \def \cellcolor{darkgreen} \def \tmp{\mgdsymbol} }{
+				\def \cellcolor{black} \def \tmp{}
+			}
+		}
+	}
+	\IfStrEq{#1}{}{
+		% case of non-colored cell
+		\draw (#2*\bitwidth+ \bitsep, -\thepresY - \cellstart*\rdheight) rectangle (#2*\bitwidth + #3*\bitwidth - \bitsep, -\thepresY - \outedgestart*\rdheight) node[pos=0.5]{#4};
+	}
+	{
+		% case of colored cell
+		\draw[very thick, \cellcolor] (#2*\bitwidth+ \bitsep, -\thepresY - \cellstart*\rdheight) rectangle (#2*\bitwidth + #3*\bitwidth - \bitsep, -\thepresY - \outedgestart*\rdheight) node[pos=0.5]{\textcolor{\cellcolor}{\bf \tmp #4}};
+	}
+}
+
+% Creates a cell, but does not display its name
+% Usage is the same as \figcell
+% allows to remove all cell names using a \renewcommand
+\newcommand{\figemptycell}[4][]{
+	\IfStrEq{#1}{bwd}{ \def \cellcolor{darkred} \def \tmp{\bwdsymbol} }{
+		\IfStrEq{#1}{fwd}{ \def \cellcolor{darkblue} \def \tmp{\fwdsymbol} }{
+			\IfStrEq{#1}{mgd}{ \def \cellcolor{darkgreen} \def \tmp{\mgdsymbol} }{
+				\def \cellcolor{black} \def \tmp{}
+			}
+		}
+	}
+	\IfStrEq{#1}{}{
+		\draw (#2*\bitwidth+ \bitsep, -\thepresY - \cellstart*\rdheight) rectangle (#2*\bitwidth + #3*\bitwidth - \bitsep, -\thepresY - \outedgestart*\rdheight) node[pos=0.5]{};
+	}
+	{
+		\draw[very thick, \cellcolor] (#2*\bitwidth+ \bitsep, -\thepresY - \cellstart*\rdheight) rectangle (#2*\bitwidth + #3*\bitwidth - \bitsep, -\thepresY - \outedgestart*\rdheight) node[pos=0.5]{\textcolor{\cellcolor}{\bf \tmp }};
+	}
+}
+
+
+% Creates an edge. Usage:
+% \figedge[fwd]{0}{4}
+% creates an edge of "fwd" type (either "fwd", "bwd", "match", "guess")
+% between nibble 0 at current round (below the current cell) and nibble 4
+% at the next round
+\newcommand{\figedge}[3][]{
+	% determine edge color and type
+	\IfStrEq{#1}{bwd}{ \def \edgecolor{darkred} \def \edgetype{<-} }{
+		\IfStrEq{#1}{fwd}{ \def \edgecolor{darkblue} \def \edgetype{->} }{
+			\IfStrEq{#1}{match}{ \def \edgecolor{cyan} \def \edgetype{} }{
+				\IfStrEq{#1}{guess}{ \def \edgecolor{darkgreen} \def \edgetype{<->} }{
+					\def \edgecolor{black} \def \edgetype{}
+				}
+			}
+		}
+	}
+	\IfStrEq{#1}{}{
+	% draw non-colored edge
+	\draw[color=\edgecolor] (#2*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \outedgestart*\rdheight) -- (#2*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \swapstart*\rdheight) -- (#3*\bitwidth + 0.5*\bitwidth + \edgeshift,-\thepresY - \rdheight +  \nextcellsep*\rdheight) -- (#3*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \rdheight - \cellstart * \rdheight + \nextcellsep*\rdheight);
+	}{
+	% draw colored edge
+	\draw[\edgetype, very thick, color=\edgecolor] (#2*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \outedgestart*\rdheight) -- (#2*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \swapstart*\rdheight) -- (#3*\bitwidth + 0.5*\bitwidth + \edgeshift,-\thepresY - \rdheight + \nextcellsep*\rdheight) -- (#3*\bitwidth + 0.5*\bitwidth + \edgeshift, -\thepresY - \rdheight - \cellstart * \rdheight + \nextcellsep * \rdheight);
+	}
+}
+
+
+% Displays a key bit that is added on a given edge. Usage:
+% \addkeyabove[fwd]{0}{$k_0$}
+% displays the key bit of "fwd" type (either "fwd", "bwd" or "shared")
+% at position 0, above the cell
+\newcommand{\addkeyabove}[3][]{
+	\def\ypos{-\thepresY - 0.5*\cellstart * \rdheight }
+	\def\myradius{0.2* \swapstart*\rdheight - 0.2*\outedgestart*\rdheight}
+
+	\IfStrEq{#1}{bwd}{ \def \keycolor{darkred}}{
+		\IfStrEq{#1}{fwd}{ \def \keycolor{darkblue} }{
+			\IfStrEq{#1}{shared}{ \def \keycolor{darkgreen} }{
+				\def \keycolor{black}
+			}
+		}
+	}
+	\fill[very thick,\keycolor] (#2*\bitwidth + 0.5*\bitwidth, \ypos) circle ( \myradius ) node[anchor=west] {\textcolor{\keycolor}{\bf #3}};
+}
+
+
+% Same as \addkeyabove, but adds the key bit *below*
+% the current cell
+\newcommand{\addkeybelow}[3][]{
+	\def\ypos{-\thepresY  - 0.5*\outedgestart*\rdheight - 0.5*\swapstart*\rdheight }
+	\def\myradius{0.2* \swapstart*\rdheight - 0.2*\outedgestart*\rdheight}
+
+	\IfStrEq{#1}{bwd}{ \def \keycolor{darkred}}{
+		\IfStrEq{#1}{fwd}{ \def \keycolor{darkblue} }{
+			\IfStrEq{#1}{shared}{ \def \keycolor{darkgreen} }{
+				\def \keycolor{black}
+			}
+		}
+	}
+	\fill[very thick,\keycolor] (#2*\bitwidth + 0.5*\bitwidth, \ypos) circle ( \myradius ) node[anchor=west] {\textcolor{\keycolor}{\bf #3}};
+}
+
+
+% Same as \addkeyabove, but displays a colored rectangle instead,
+% and does not write the name of the key bit.
+% Can be used with \renewcommand
+\newcommand{\keyaddabove}[3][]{
+	\IfStrEq{#1}{bwd}{ \def \keycolor{darkred}}{
+		\IfStrEq{#1}{fwd}{ \def \keycolor{darkblue} }{
+			\IfStrEq{#1}{shared}{ \def \keycolor{darkgreen} }{
+				\def \keycolor{black}
+			}
+		}
+	}
+	\fill[\keycolor] (#2*\bitwidth, -\thepresY ) rectangle (#2*\bitwidth + \bitwidth,-\thepresY -\cellstart * \rdheight  );
+	\draw (#2*\bitwidth, -\thepresY) rectangle (#2*\bitwidth + \bitwidth,-\thepresY -\cellstart * \rdheight   );
+}
+
+% Same as \addkeybelow, but displays a colored rectangle instead,
+% and does not write the name of the key bit.
+% Can be used with \renewcommand
+\newcommand{\keyaddbelow}[3][]{
+	\IfStrEq{#1}{bwd}{ \def \keycolor{darkred}}{
+		\IfStrEq{#1}{fwd}{ \def \keycolor{darkblue} }{
+			\IfStrEq{#1}{shared}{ \def \keycolor{darkgreen} }{
+				\def \keycolor{black}
+			}
+		}
+	}
+	\fill[\keycolor] (#2*\bitwidth, -\thepresY  - \outedgestart*\rdheight) rectangle (#2*\bitwidth + \bitwidth, -\thepresY  - \swapstart*\rdheight );
+	\draw (#2*\bitwidth, -\thepresY  - \outedgestart*\rdheight) rectangle (#2*\bitwidth + \bitwidth, -\thepresY  - \swapstart*\rdheight );
+}

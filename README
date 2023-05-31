@@ -1,0 +1,15 @@
+Code of the paper:
+"Simplified Modeling of MITM Attacks for Block Ciphers: new (Quantum) Attacks"
+by André Schrottenloher & Marc Stevens (available from the ePrint archive).
+
+Contents of the files:
+- util.py: definitions of the Constraints object (a graph-based object
+representing an attacked cipher) and the Cipher object (a more intuitive
+interface for Constraints which allows to define the cipher by its sequence
+of operations)
+- modeling.py: the translation of a Constraints into a MILP problem
+- attacks.py: definition of ciphers that we considered in the paper, and
+solving the constraints for each of them (resulting figures are automatically
+generated)
+- simplifiedpresent.sty: TeX style file that defines the macros used for the
+figures
