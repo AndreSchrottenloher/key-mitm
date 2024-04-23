@@ -895,7 +895,7 @@ class Cipher:
                             (status, _tmp, key_bit))
                     _tmp += 1
                 _tmp = _cell_position_ctr
-                for key_bit in key_input_nibbles:
+                for key_bit in key_output_nibbles:
                     status = ""
                     if key_bits_colored[SHARED][key_bit] > 0.5:
                         status = "shared"
